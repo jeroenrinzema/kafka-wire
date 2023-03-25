@@ -5,6 +5,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/jeroenrinzema/kafka-wire/internal/buffer"
+	"github.com/jeroenrinzema/kafka-wire/internal/protocol"
 	"go.uber.org/zap"
 )
 
@@ -55,6 +57,21 @@ func (srv *Server) Serve(listener net.Listener) error {
 	}
 }
 
-func (srv *Server) serve(ctx context.Context, conn net.Conn) error {
-	return nil
+func (srv *Server) serve(ctx context.Context, conn net.Conn) (err error) {
+	reader := buffer.NewReader(conn, buffer.DefaultBufferSize)
+
+	for {
+		_, err = reader.ReadMessage()
+		if err != nil {
+			return err
+		}
+
+		header := &protocol.RequestHeader{}
+		err = header.Decode(reader)
+		if err != nil {
+			return err
+		}
+
+		srv.logger.Debug("incoming request!", zap.Any("header", header))
+	}
 }
